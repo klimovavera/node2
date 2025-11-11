@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Оранжевый WebSocket Чат</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --orange: #FF6B00;
+      --dark-bg: #121212;
+      --card-bg: #1E1E1E;
+      --text: #FFFFFF;
+      --border: #333;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background-color: var(--dark-bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 24px;
+      color: var(--orange);
+      font-weight: 700;
+      font-size: 28px;
+    }
+
+   
+    #join-screen {
+      background: var(--card-bg);
+      padding: 32px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      text-align: center;
+      max-width: 400px;
+      margin: 60px auto;
+    }
+
+    #join-screen h2 {
+      margin-bottom: 20px;
+      color: var(--orange);
+    }
+
+    #join-screen input[type="text"],
+    #join-screen input[type="color"] {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 16px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      background: #2A2A2A;
+      color: white;
+      font-size: 16px;
+    }
+
+    #join-screen input[type="color"] {
+      height: 50px;
+      cursor: pointer;
+    }
+
+    #join-screen button {
+      width: 100%;
+      padding: 12px;
+      background: var(--orange);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    #join-screen button:hover {
+      background: #e05a00;
+    }
+
+   
+    #chat-screen {
+      display: none;
+    }
+
+    .chat-layout {
+      display: flex;
+      gap: 24px;
+    }
+
+    #chat {
+      flex: 1;
+      height: 500px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      overflow-y: auto;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    #input-area {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    #input-area input {
+      flex: 1;
+      padding: 14px;
+      font-size: 16px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      background: #2A2A2A;
+      color: white;
+    }
+
+    #input-area button {
+      padding: 14px 24px;
+      background: var(--orange);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    #input-area button:hover {
+      background: #e05a00;
+    }
+
+   
+    .message,
+    .private,
+    .system {
+      margin-bottom: 12px;
+      word-wrap: break-word;
+    }
+
+    .system {
+      color: #aaa;
+      font-style: italic;
+      font-size: 14px;
+    }
+
+    .private {
+      opacity: 0.9;
+    }
+
+    
+    #users {
+      width: 220px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    #users h3 {
+      color: var(--orange);
+      margin-bottom: 16px;
+      font-size: 18px;
+    }
+
+    #users ul {
+      list-style: none;
+    }
+
+    #users li {
+      padding: 8px 0;
+      cursor: pointer;
+      border-bottom: 1px solid #333;
+      transition: color 0.2s;
+    }
+
+    #users li:hover {
+      color: var(--orange);
+    }
+
+
+    #chat::-webkit-scrollbar {
+      width: 8px;
+    }
+    #chat::-webkit-scrollbar-track {
+      background: #2A2A2A;
+      border-radius: 4px;
+    }
+    #chat::-webkit-scrollbar-thumb {
+      background: var(--orange);
+      border-radius: 4px;
+    }
+
+    @media (max-width: 768px) {
+      .chat-layout {
+        flex-direction: column;
+      }
+      #users {
+        width: 100%;
+        order: -1;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🔥 Оранжевый Чат</h1>
+
+  <div id="join-screen">
+    <h2>Представьтесь</h2>
+    <input type="text" id="name" placeholder="Ваше имя" maxlength="20" autocomplete="off" />
+    <input type="color" id="color" value="#FF6B00" title="Выберите цвет сообщений" />
+    <button onclick="joinChat()">Войти в чат</button>
+  </div>
+
+  <div id="chat-screen">
+    <div class="chat-layout">
+      <div>
+        <div id="chat"></div>
+        <div id="input-area">
+          <input type="text" id="message" placeholder="Напишите сообщение... (Enter для отправки)" maxlength="200" />
+          <button onclick="sendMessage()">Отправить</button>
+        </div>
+      </div>
+      <div id="users">
+        <h3>Участники</h3>
+        <ul id="users-list"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let socket;
+  let myName = '';
+  let myColor = '#FF6B00';
+
+  function joinChat() {
+    const nameInput = document.getElementById('name').value.trim();
+    const colorInput = document.getElementById('color').value;
+    if (!nameInput) {
+      alert('Пожалуйста, введите имя.');
+      return;
+    }
+    myName = nameInput;
+    myColor = colorInput;
+
+    socket = new WebSocket('ws://localhost:8080');
+
+    socket.onopen = () => {
+      socket.send(JSON.stringify({ type: 'join', name: myName, color: myColor }));
+    };
+
+    socket.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      const chat = document.getElementById('chat');
+
+      if (msg.type === 'error') {
+        appendMessage(msg.text, 'system');
+        return;
+      }
+
+      if (msg.type === 'system') {
+        appendMessage(msg.text, 'system');
+        return;
+      }
+
+      if (msg.type === 'users') {
+        const list = document.getElementById('users-list');
+        list.innerHTML = '';
+        msg.list.forEach(user => {
+          const li = document.createElement('li');
+          li.textContent = user.name;
+          li.style.color = user.color;
+          li.onclick = () => {
+            const input = document.getElementById('message');
+            input.value = `/msg ${user.name} `;
+            input.focus();
+          };
+          list.appendChild(li);
+        });
+        return;
+      }
+
+      if (msg.type === 'message') {
+        appendMessage(`${msg.name}: ${msg.text}`, 'message', msg.color);
+        return;
+      }
+
+      if (msg.type === 'private') {
+        const from = msg.from;
+        const to = msg.to ? ` → ${msg.to}` : '';
+        appendMessage(`[ЛС] ${from}${to}: ${msg.text}`, 'private', msg.color);
+        return;
+      }
+    };
+
+    socket.onclose = () => {
+      alert('Соединение с чатом потеряно.');
+    };
+
+    document.getElementById('join-screen').style.display = 'none';
+    document.getElementById('chat-screen').style.display = 'block';
+  }
+
+  function appendMessage(text, className, color = '#FFFFFF') {
+    const chat = document.getElementById('chat');
+    const div = document.createElement('div');
+    div.className = className;
+    div.textContent = text;
+    div.style.color = color;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function sendMessage() {
+    const input = document.getElementById('message');
+    const text = input.value.trim();
+    if (!text) return;
+
+    if (text.startsWith('/msg ')) {
+      const parts = text.split(' ');
+      const to = parts[1];
+      const privateMsg = parts.slice(2).join(' ');
+      if (to && privateMsg) {
+        socket.send(JSON.stringify({ type: 'message', text: privateMsg, to: to }));
+      }
+    } else {
+      socket.send(JSON.stringify({ type: 'message', text: text }));
+    }
+    input.value = '';
+  }
+
+  document.getElementById('message').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      sendMessage();
+    }
+  });
+</script>
+
+</body>
+</html>
